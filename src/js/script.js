@@ -14,7 +14,12 @@ let dialogCount = 0;
 const MAX_DIALOG_COUNT = 5;
 
 // PDF.js の設定
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    console.log('PDF.js worker configured');
+} else {
+    console.warn('PDF.js not loaded yet, will configure later');
+}
 
 // DOM要素の取得
 const elements = {
@@ -35,6 +40,22 @@ const elements = {
 // 初期化
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM Content Loaded');
+    
+    // 要素の存在確認
+    console.log('loadSampleBtn element:', document.getElementById('loadSampleBtn'));
+    console.log('connectBtn element:', document.getElementById('connectBtn'));
+    
+    // PDF.jsの最終確認
+    if (typeof pdfjsLib === 'undefined') {
+        console.warn('PDF.js not available, retrying in 1 second...');
+        setTimeout(() => {
+            if (typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                console.log('PDF.js worker configured (delayed)');
+            }
+        }, 1000);
+    }
+    
     console.log('Elements:', elements);
     setupEventListeners();
     updateUI();
@@ -44,29 +65,58 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupEventListeners() {
     console.log('Setting up event listeners');
     
-    // Azure OpenAI 接続
-    elements.connectBtn.addEventListener('click', testAzureConnection);
-    
-    // PDFアップロード
-    elements.pdfUpload.addEventListener('change', handleFileUpload);
-    
-    // サンプルデータ読み込み
-    elements.loadSampleBtn.addEventListener('click', loadSampleData);
-    
-    // ドラッグ&ドロップ
-    const uploadArea = elements.pdfUpload.parentElement;
-    uploadArea.addEventListener('dragover', handleDragOver);
-    uploadArea.addEventListener('dragleave', handleDragLeave);
-    uploadArea.addEventListener('drop', handleFileDrop);
-    
-    // 対話開始
-    elements.startDialogBtn.addEventListener('click', startDialog);
+    try {
+        // Azure OpenAI 接続
+        if (elements.connectBtn) {
+            elements.connectBtn.addEventListener('click', testAzureConnection);
+            console.log('Connect button listener added');
+        } else {
+            console.error('Connect button not found');
+        }
+        
+        // PDFアップロード
+        if (elements.pdfUpload) {
+            elements.pdfUpload.addEventListener('change', handleFileUpload);
+            console.log('PDF upload listener added');
+        }
+        
+        // サンプルデータ読み込み
+        if (elements.loadSampleBtn) {
+            elements.loadSampleBtn.addEventListener('click', loadSampleData);
+            console.log('Sample data button listener added');
+        } else {
+            console.error('Sample data button not found');
+        }
+        
+        // ドラッグ&ドロップ
+        if (elements.pdfUpload && elements.pdfUpload.parentElement) {
+            const uploadArea = elements.pdfUpload.parentElement;
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleFileDrop);
+            console.log('Drag and drop listeners added');
+        }
+        
+        // 対話開始
+        if (elements.startDialogBtn) {
+            elements.startDialogBtn.addEventListener('click', startDialog);
+            console.log('Start dialog button listener added');
+        }
+        
+        console.log('All event listeners set up successfully');
+    } catch (error) {
+        console.error('Error setting up event listeners:', error);
+    }
 }
 
 // Azure OpenAI 接続テスト
 async function testAzureConnection() {
+    console.log('testAzureConnection called');
+    
     const endpoint = elements.azureEndpoint.value.trim();
     const apiKey = elements.azureApiKey.value.trim();
+    
+    console.log('Endpoint:', endpoint, 'API Key:', apiKey ? '***' : 'empty');
     
     if (!endpoint || !apiKey) {
         showConnectionStatus('エンドポイントとAPIキーを入力してください', 'error');
