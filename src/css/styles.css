@@ -1,0 +1,144 @@
+/* カスタムスタイル */
+
+/* PDF.js の worker を設定 */
+.pdf-canvas {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+}
+
+/* 対話バブルのスタイル */
+.dialog-bubble {
+    max-width: 80%;
+    padding: 1rem;
+    border-radius: 1rem;
+    margin-bottom: 1rem;
+    word-wrap: break-word;
+}
+
+.dialog-bubble.shareholder {
+    background-color: #eff6ff; /* 青系 */
+    border: 1px solid #dbeafe;
+    margin-left: auto;
+    margin-right: 0;
+}
+
+.dialog-bubble.director {
+    background-color: #f0fdf4; /* 緑系 */
+    border: 1px solid #dcfce7;
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.dialog-bubble.summary {
+    background-color: #fefce8; /* 黄系 */
+    border: 1px solid #fef3c7;
+    margin: 1rem auto;
+    text-align: center;
+}
+
+/* アイコンスタイル */
+.dialog-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 0.5rem;
+}
+
+.dialog-icon.shareholder {
+    background-color: #3b82f6; /* 青 */
+}
+
+.dialog-icon.director {
+    background-color: #10b981; /* 緑 */
+}
+
+.dialog-icon.summary {
+    background-color: #f59e0b; /* オレンジ */
+}
+
+/* ファイルリストアイテム */
+.file-item {
+    padding: 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.file-item:hover {
+    background-color: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.file-item.selected {
+    background-color: #eff6ff;
+    border-color: #3b82f6;
+}
+
+/* ローディングアニメーション */
+.loading-spinner {
+    border: 2px solid #f3f4f6;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* レスポンシブ調整 */
+@media (max-width: 1024px) {
+    .container {
+        padding: 1rem;
+    }
+    
+    .dialog-bubble {
+        max-width: 90%;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 0.5rem;
+    }
+    
+    .dialog-bubble {
+        max-width: 95%;
+    }
+    
+    .dialog-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.875rem;
+    }
+}
+
+/* プレビューエリアのスクロール */
+#pdfPreview {
+    overflow: auto;
+}
+
+/* 対話エリアのスクロール */
+#dialogArea {
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+/* ドラッグ&ドロップエリアのホバー効果 */
+.drag-over {
+    border-color: #3b82f6 !important;
+    background-color: #eff6ff !important;
+}

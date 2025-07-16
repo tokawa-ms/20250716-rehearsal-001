@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>株主対話エージェント</title>
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js CDN for PDF processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- メインコンテナ -->
+    <div class="container mx-auto px-4 py-8 h-screen flex flex-col">
+        <!-- ヘッダー -->
+        <header class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 text-center">株主対話エージェント</h1>
+            <p class="text-gray-600 text-center mt-2">株主と取締役の対話をシミュレーションします</p>
+        </header>
+
+        <!-- Azure OpenAI 接続設定パネル -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Azure OpenAI 接続設定</h2>
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                    <label for="azureEndpoint" class="block text-sm font-medium text-gray-700 mb-2">
+                        Azure OpenAI エンドポイント（例：https://your-resource.openai.azure.com/）
+                    </label>
+                    <input type="text" 
+                           id="azureEndpoint" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="https://your-resource.openai.azure.com/ または demo でテスト">
+                </div>
+                <div class="flex-1">
+                    <label for="azureApiKey" class="block text-sm font-medium text-gray-700 mb-2">
+                        APIキー
+                    </label>
+                    <input type="password" 
+                           id="azureApiKey" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Azure OpenAI APIキー または demo でテスト">
+                </div>
+                <div class="flex items-end">
+                    <button id="connectBtn" 
+                            class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400">
+                        接続テスト
+                    </button>
+                </div>
+            </div>
+            <div id="connectionStatus" class="mt-3 text-sm hidden"></div>
+        </div>
+
+        <!-- メインコンテンツエリア -->
+        <div class="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+            <!-- 左側パネル：PDFアップロード・プレビュー -->
+            <div class="w-full lg:w-1/2 flex flex-col">
+                <div class="bg-white rounded-lg shadow-md p-6 flex-1 flex flex-col">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">資料アップロード</h2>
+                    
+                    <!-- ファイルアップロード -->
+                    <div class="mb-6">
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                            <input type="file" 
+                                   id="pdfUpload" 
+                                   accept=".pdf" 
+                                   multiple
+                                   class="hidden">
+                            <label for="pdfUpload" class="cursor-pointer">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <p class="mt-2 text-lg text-gray-600">PDFファイルをアップロード</p>
+                                <p class="text-sm text-gray-500">クリックまたはドラッグ&ドロップ</p>
+                            </label>
+                        </div>
+                        
+                        <!-- デモ用サンプルデータボタン -->
+                        <div class="mt-4 text-center">
+                            <button id="loadSampleBtn" 
+                                    class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm">
+                                サンプル決算データを読み込み（デモ用）
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- アップロードファイル一覧 -->
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold mb-2 text-gray-800">アップロード済みファイル</h3>
+                        <div id="fileList" class="space-y-2 max-h-32 overflow-y-auto">
+                            <!-- ファイル一覧がここに動的に追加される -->
+                        </div>
+                    </div>
+
+                    <!-- PDFプレビュー -->
+                    <div class="flex-1 min-h-0">
+                        <h3 class="text-lg font-semibold mb-2 text-gray-800">プレビュー</h3>
+                        <div id="pdfPreview" class="border border-gray-300 rounded-lg h-full flex items-center justify-center bg-gray-50">
+                            <p class="text-gray-500">PDFファイルを選択してください</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側パネル：対話表示 -->
+            <div class="w-full lg:w-1/2 flex flex-col">
+                <div class="bg-white rounded-lg shadow-md p-6 flex-1 flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800">株主対話</h2>
+                        <button id="startDialogBtn" 
+                                class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400"
+                                disabled>
+                            対話開始
+                        </button>
+                    </div>
+
+                    <!-- 対話エリア -->
+                    <div id="dialogArea" class="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-4 space-y-4 min-h-0">
+                        <div class="text-center text-gray-500">
+                            <p>Azure OpenAIに接続し、PDFファイルをアップロードしてから対話を開始してください</p>
+                        </div>
+                    </div>
+
+                    <!-- 対話状態表示 -->
+                    <div id="dialogStatus" class="mt-4 text-sm text-gray-600 hidden">
+                        <span id="dialogProgress"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScriptファイル -->
+    <script src="./js/script.js"></script>
+</body>
+</html>
