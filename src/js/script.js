@@ -580,7 +580,7 @@ ${historyText}
 株主として、決算や経営に関する鋭い質問を1つ作成してください。質問は簡潔で具体的にしてください。
 `;
     
-    return await callAzureOpenAI(prompt, 150);
+    return await callAzureOpenAI(prompt, 1500);
 }
 
 // 取締役の回答生成
@@ -604,7 +604,7 @@ ${historyText}
 取締役として、資料に基づいた丁寧で具体的な回答をしてください。
 `;
     
-    return await callAzureOpenAI(prompt, 200);
+    return await callAzureOpenAI(prompt, 2000);
 }
 
 // 対話要約生成
@@ -621,11 +621,11 @@ ${historyText}
 要約は200文字程度で作成してください。
 `;
     
-    return await callAzureOpenAI(prompt, 150);
+    return await callAzureOpenAI(prompt, 1500);
 }
 
 // Azure OpenAI API呼び出し
-async function callAzureOpenAI(prompt, maxTokens = 150) {
+async function callAzureOpenAI(prompt, maxTokens = 1500) {
     try {
         // デモモード：エンドポイントが "demo" の場合はモックレスポンスを返す
         if (azureConfig.endpoint === 'demo') {
