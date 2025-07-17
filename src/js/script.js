@@ -25,6 +25,7 @@ if (typeof pdfjsLib !== 'undefined') {
 const elements = {
     azureEndpoint: document.getElementById('azureEndpoint'),
     azureApiKey: document.getElementById('azureApiKey'),
+    azureDeployment: document.getElementById('azureDeployment'),
     connectBtn: document.getElementById('connectBtn'),
     connectionStatus: document.getElementById('connectionStatus'),
     pdfUpload: document.getElementById('pdfUpload'),
@@ -115,8 +116,9 @@ async function testAzureConnection() {
     
     const endpoint = elements.azureEndpoint.value.trim();
     const apiKey = elements.azureApiKey.value.trim();
+    const deployment = elements.azureDeployment.value.trim() || 'gpt-4-turbo';
     
-    console.log('Endpoint:', endpoint, 'API Key:', apiKey ? '***' : 'empty');
+    console.log('Endpoint:', endpoint, 'API Key:', apiKey ? '***' : 'empty', 'Deployment:', deployment);
     
     if (!endpoint || !apiKey) {
         showConnectionStatus('エンドポイントとAPIキーを入力してください', 'error');
@@ -131,7 +133,7 @@ async function testAzureConnection() {
         if (endpoint === 'demo' && apiKey === 'demo') {
             console.log('デモモードで接続中...');
             await sleep(1500); // 接続をシミュレート
-            azureConfig = { endpoint, apiKey, connected: true };
+            azureConfig = { endpoint, apiKey, deployment, connected: true };
             showConnectionStatus('デモモードで接続されました（実際のAPIは使用されません）', 'success');
             console.log('デモモード接続完了:', azureConfig);
             updateUI();
@@ -139,7 +141,7 @@ async function testAzureConnection() {
         }
         
         // 実際のAzure OpenAI接続テスト
-        const testUrl = `${endpoint}/openai/deployments/gpt-4-turbo/chat/completions?api-version=2024-02-15-preview`;
+        const testUrl = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=2024-02-15-preview`;
         
         const response = await fetch(testUrl, {
             method: 'POST',
@@ -156,7 +158,7 @@ async function testAzureConnection() {
         });
         
         if (response.ok || response.status === 400) { // 400でもAPI接続は成功
-            azureConfig = { endpoint, apiKey, connected: true };
+            azureConfig = { endpoint, apiKey, deployment, connected: true };
             showConnectionStatus('Azure OpenAI に正常に接続されました', 'success');
             updateUI();
         } else {
@@ -544,7 +546,7 @@ async function callAzureOpenAI(prompt, maxTokens = 150) {
         return generateMockResponse(prompt);
     }
     
-    const url = `${azureConfig.endpoint}/openai/deployments/gpt-4-turbo/chat/completions?api-version=2024-02-15-preview`;
+    const url = `${azureConfig.endpoint}/openai/deployments/${azureConfig.deployment}/chat/completions?api-version=2024-02-15-preview`;
     
     const response = await fetch(url, {
         method: 'POST',
