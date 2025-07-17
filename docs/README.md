@@ -17,6 +17,23 @@
 
 ### 2. 設定手順
 
+#### デモモードでの利用（推奨）
+1. **デモ接続設定**
+   - エンドポイント: `demo` と入力
+   - APIキー: `demo` と入力
+   - 「接続テスト」で接続を確認
+
+2. **サンプルデータの読み込み**
+   - ブラウザの開発者コンソールを開く
+   - `document.getElementById('loadSampleBtn').click();` を実行
+   - 架空の決算短信データが読み込まれる
+
+3. **対話開始**
+   - 「対話開始」ボタンをクリック
+   - 5回の質疑応答を自動実行
+   - 最後に対話の要約を表示
+
+#### Azure OpenAI を使用した本格利用
 1. **Azure OpenAI 接続設定**
    - エンドポイント: `https://your-resource.openai.azure.com/`
    - APIキー: Azure ポータルから取得
@@ -42,12 +59,23 @@
 ## ファイル構成
 
 ```
-src/
-├── index.html          # メインHTML
-├── css/
-│   └── styles.css      # カスタムスタイル
-└── js/
-    └── script.js       # メインロジック
+vibes-kabunushi-agent-demo/
+├── Readme.md                  # プロジェクト概要
+├── LICENSE                    # MITライセンス
+├── .github/                   # GitHub設定
+│   └── copilot-instructions.md # GitHub Copilot設定
+├── docs/                      # ドキュメント
+│   ├── README.md              # 機能詳細（このファイル）
+│   ├── specification.md       # 仕様書
+│   ├── usage.md               # 使用方法
+│   ├── feature_updates.md     # 機能アップデート
+│   └── test_procedures.md     # テスト手順
+└── src/                       # アプリケーションソース
+    ├── index.html             # メインHTML
+    ├── css/
+    │   └── styles.css         # カスタムスタイル
+    └── js/
+        └── script.js          # メインロジック
 ```
 
 ## 実装済み機能
@@ -83,4 +111,11 @@ MIT License
 
 ## 開発者向け情報
 
-詳細な仕様については `docs/specification.md` を参照してください。
+詳細な仕様については以下のドキュメントを参照してください：
+
+- 📋 **[仕様書](specification.md)** - 技術仕様と設計詳細
+- 🚀 **[使用方法](usage.md)** - 詳細な操作手順とデモ
+- 🔄 **[機能アップデート](feature_updates.md)** - 最新の機能追加履歴
+- 🧪 **[テスト手順](test_procedures.md)** - 動作確認とテスト方法
+
+プロジェクト全体の概要については [トップページのREADME](../Readme.md) をご覧ください。
