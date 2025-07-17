@@ -97,8 +97,8 @@
                             </label>
                         </div>
                         
-                        <!-- デモ用サンプルデータボタン -->
-                        <div class="mt-4 text-center">
+                        <!-- デモ用サンプルデータボタン（隠しフィールド） -->
+                        <div class="mt-4 text-center" style="display: none;">
                             <button id="loadSampleBtn" 
                                     class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm">
                                 サンプル決算データを読み込み（デモ用）
@@ -116,7 +116,18 @@
 
                     <!-- PDFプレビュー -->
                     <div class="flex-1 min-h-0">
-                        <h3 class="text-lg font-semibold mb-2 text-gray-800">プレビュー</h3>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-lg font-semibold text-gray-800">プレビュー</h3>
+                            <div id="pdfNavigation" class="hidden flex items-center space-x-2">
+                                <button id="prevPageBtn" class="px-2 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-400">
+                                    前へ
+                                </button>
+                                <span id="pageInfo" class="text-sm text-gray-600">1 / 1</span>
+                                <button id="nextPageBtn" class="px-2 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-400">
+                                    次へ
+                                </button>
+                            </div>
+                        </div>
                         <div id="pdfPreview" class="border border-gray-300 rounded-lg h-full flex items-center justify-center bg-gray-50">
                             <p class="text-gray-500">PDFファイルを選択してください</p>
                         </div>

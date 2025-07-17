@@ -11,6 +11,9 @@ let azureConfig = {
 
 let uploadedFiles = [];
 let selectedFile = null;
+let currentPdfDoc = null; // 現在のPDFドキュメント
+let currentPage = 1; // 現在のページ番号
+let totalPages = 0; // 総ページ数
 let dialogHistory = [];
 let dialogCount = 0;
 const MAX_DIALOG_COUNT = 5;
@@ -35,11 +38,41 @@ const elements = {
     loadSampleBtn: document.getElementById('loadSampleBtn'),
     fileList: document.getElementById('fileList'),
     pdfPreview: document.getElementById('pdfPreview'),
+    pdfNavigation: document.getElementById('pdfNavigation'),
+    prevPageBtn: document.getElementById('prevPageBtn'),
+    nextPageBtn: document.getElementById('nextPageBtn'),
+    pageInfo: document.getElementById('pageInfo'),
     startDialogBtn: document.getElementById('startDialogBtn'),
     dialogArea: document.getElementById('dialogArea'),
     dialogStatus: document.getElementById('dialogStatus'),
     dialogProgress: document.getElementById('dialogProgress')
 };
+
+// ローカルストレージ管理
+function saveAzureSettings() {
+    const settings = {
+        endpoint: elements.azureEndpoint.value,
+        apiKey: elements.azureApiKey.value,
+        deployment: elements.azureDeployment.value,
+        apiVersion: elements.azureApiVersion.value
+    };
+    localStorage.setItem('azureOpenAISettings', JSON.stringify(settings));
+}
+
+function loadAzureSettings() {
+    try {
+        const saved = localStorage.getItem('azureOpenAISettings');
+        if (saved) {
+            const settings = JSON.parse(saved);
+            elements.azureEndpoint.value = settings.endpoint || '';
+            elements.azureApiKey.value = settings.apiKey || '';
+            elements.azureDeployment.value = settings.deployment || 'gpt-4-turbo';
+            elements.azureApiVersion.value = settings.apiVersion || '2025-01-01-preview';
+        }
+    } catch (error) {
+        console.warn('Failed to load Azure settings from localStorage:', error);
+    }
+}
 
 // 初期化
 document.addEventListener('DOMContentLoaded', function() {
@@ -61,6 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     console.log('Elements:', elements);
+    loadAzureSettings(); // 保存された設定を読み込み
     setupEventListeners();
     updateUI();
 });
@@ -107,6 +141,17 @@ function setupEventListeners() {
             console.log('Start dialog button listener added');
         }
         
+        // PDF ページナビゲーション
+        if (elements.prevPageBtn) {
+            elements.prevPageBtn.addEventListener('click', () => showPDFPage(currentPage - 1));
+            console.log('Previous page button listener added');
+        }
+        
+        if (elements.nextPageBtn) {
+            elements.nextPageBtn.addEventListener('click', () => showPDFPage(currentPage + 1));
+            console.log('Next page button listener added');
+        }
+        
         console.log('All event listeners set up successfully');
     } catch (error) {
         console.error('Error setting up event listeners:', error);
@@ -138,6 +183,7 @@ async function testAzureConnection() {
             console.log('デモモードで接続中...');
             await sleep(1500); // 接続をシミュレート
             azureConfig = { endpoint, apiKey, deployment, apiVersion, connected: true };
+            saveAzureSettings(); // 設定を保存
             showConnectionStatus('デモモードで接続されました（実際のAPIは使用されません）', 'success');
             console.log('デモモード接続完了:', azureConfig);
             updateUI();
@@ -163,6 +209,7 @@ async function testAzureConnection() {
         
         if (response.ok || response.status === 400) { // 400でもAPI接続は成功
             azureConfig = { endpoint, apiKey, deployment, apiVersion, connected: true };
+            saveAzureSettings(); // 設定を保存
             showConnectionStatus('Azure OpenAI に正常に接続されました', 'success');
             updateUI();
         } else {
@@ -380,31 +427,12 @@ async function showPDFPreview(file) {
         reader.onload = async function(e) {
             try {
                 const typedarray = new Uint8Array(e.target.result);
-                const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                currentPdfDoc = await pdfjsLib.getDocument(typedarray).promise;
+                totalPages = currentPdfDoc.numPages;
+                currentPage = 1;
                 
-                // 最初のページを表示
-                const page = await pdf.getPage(1);
-                const scale = 1.2;
-                const viewport = page.getViewport({ scale });
-                
-                const canvas = document.createElement('canvas');
-                canvas.className = 'pdf-canvas mx-auto';
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                
-                await page.render({ canvasContext: context, viewport }).promise;
-                
-                elements.pdfPreview.innerHTML = '';
-                elements.pdfPreview.appendChild(canvas);
-                
-                // ページ数が複数ある場合は情報を表示
-                if (pdf.numPages > 1) {
-                    const info = document.createElement('p');
-                    info.className = 'text-sm text-gray-600 text-center mt-2';
-                    info.textContent = `1 / ${pdf.numPages} ページ`;
-                    elements.pdfPreview.appendChild(info);
-                }
+                await showPDFPage(1);
+                updatePDFNavigation();
             } catch (error) {
                 elements.pdfPreview.innerHTML = `<p class="text-red-500">プレビューの表示に失敗しました: ${error.message}</p>`;
             }
@@ -412,6 +440,47 @@ async function showPDFPreview(file) {
         reader.readAsArrayBuffer(file);
     } catch (error) {
         elements.pdfPreview.innerHTML = `<p class="text-red-500">プレビューの表示に失敗しました: ${error.message}</p>`;
+    }
+}
+
+// PDFページの表示
+async function showPDFPage(pageNum) {
+    if (!currentPdfDoc || pageNum < 1 || pageNum > totalPages) {
+        return;
+    }
+    
+    try {
+        currentPage = pageNum;
+        const page = await currentPdfDoc.getPage(pageNum);
+        const scale = 1.2;
+        const viewport = page.getViewport({ scale });
+        
+        const canvas = document.createElement('canvas');
+        canvas.className = 'pdf-canvas mx-auto';
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        await page.render({ canvasContext: context, viewport }).promise;
+        
+        elements.pdfPreview.innerHTML = '';
+        elements.pdfPreview.appendChild(canvas);
+        
+        updatePDFNavigation();
+    } catch (error) {
+        elements.pdfPreview.innerHTML = `<p class="text-red-500">ページの表示に失敗しました: ${error.message}</p>`;
+    }
+}
+
+// PDFナビゲーションUIの更新
+function updatePDFNavigation() {
+    if (totalPages > 1) {
+        elements.pdfNavigation.classList.remove('hidden');
+        elements.pageInfo.textContent = `${currentPage} / ${totalPages}`;
+        elements.prevPageBtn.disabled = currentPage <= 1;
+        elements.nextPageBtn.disabled = currentPage >= totalPages;
+    } else {
+        elements.pdfNavigation.classList.add('hidden');
     }
 }
 
@@ -460,25 +529,38 @@ async function conductDialog() {
         dialogCount = i + 1;
         showDialogStatus(`対話 ${dialogCount}/${MAX_DIALOG_COUNT} 進行中...`);
         
-        // 株主の質問を生成
-        const shareholderQuestion = await generateShareholderQuestion(context, dialogHistory);
-        addDialogMessage('shareholder', shareholderQuestion);
-        dialogHistory.push({ role: 'shareholder', content: shareholderQuestion });
-        
-        await sleep(1000); // 少し間を空ける
-        
-        // 取締役の回答を生成
-        const directorAnswer = await generateDirectorAnswer(context, dialogHistory);
-        addDialogMessage('director', directorAnswer);
-        dialogHistory.push({ role: 'director', content: directorAnswer });
-        
-        await sleep(1000);
+        try {
+            // 株主の質問を生成
+            showDialogStatus(`対話 ${dialogCount}/${MAX_DIALOG_COUNT} - 株主の質問を生成中...`);
+            const shareholderQuestion = await generateShareholderQuestion(context, dialogHistory);
+            addDialogMessage('shareholder', shareholderQuestion);
+            dialogHistory.push({ role: 'shareholder', content: shareholderQuestion });
+            
+            await sleep(1000); // 少し間を空ける
+            
+            // 取締役の回答を生成
+            showDialogStatus(`対話 ${dialogCount}/${MAX_DIALOG_COUNT} - 取締役の回答を生成中...`);
+            const directorAnswer = await generateDirectorAnswer(context, dialogHistory);
+            addDialogMessage('director', directorAnswer);
+            dialogHistory.push({ role: 'director', content: directorAnswer });
+            
+            await sleep(1000);
+        } catch (error) {
+            console.error(`Dialog ${dialogCount} failed:`, error);
+            addDialogMessage('system', `対話 ${dialogCount} でエラーが発生しました: ${error.message}`);
+            // エラーが発生しても次の対話に進む
+        }
     }
     
     // 対話の要約を生成
-    showDialogStatus('対話の要約を生成中...');
-    const summary = await generateDialogSummary(dialogHistory);
-    addDialogMessage('summary', summary);
+    try {
+        showDialogStatus('対話の要約を生成中...');
+        const summary = await generateDialogSummary(dialogHistory);
+        addDialogMessage('summary', summary);
+    } catch (error) {
+        console.error('Summary generation failed:', error);
+        addDialogMessage('summary', '対話の要約生成中にエラーが発生しました。');
+    }
 }
 
 // 株主の質問生成
@@ -544,56 +626,75 @@ ${historyText}
 
 // Azure OpenAI API呼び出し
 async function callAzureOpenAI(prompt, maxTokens = 150) {
-    // デモモード：エンドポイントが "demo" の場合はモックレスポンスを返す
-    if (azureConfig.endpoint === 'demo') {
-        await sleep(1000 + Math.random() * 2000); // 1-3秒のランダムな遅延
-        return generateMockResponse(prompt);
+    try {
+        // デモモード：エンドポイントが "demo" の場合はモックレスポンスを返す
+        if (azureConfig.endpoint === 'demo') {
+            await sleep(1000 + Math.random() * 2000); // 1-3秒のランダムな遅延
+            const response = generateMockResponse(prompt);
+            
+            // レスポンスが空でないことを確認
+            if (!response || response.trim().length === 0) {
+                throw new Error('空のレスポンスが生成されました');
+            }
+            
+            return response;
+        }
+        
+        const url = `${azureConfig.endpoint}/openai/deployments/${azureConfig.deployment}/chat/completions?api-version=${azureConfig.apiVersion}`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': azureConfig.apiKey
+            },
+            body: JSON.stringify({
+                messages: [
+                    { role: 'user', content: prompt }
+                ],
+                max_tokens: maxTokens,
+                temperature: 0.7
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API エラー: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        const content = data.choices[0].message.content.trim();
+        
+        // レスポンスが空でないことを確認
+        if (!content || content.length === 0) {
+            throw new Error('空のレスポンスが返されました');
+        }
+        
+        return content;
+    } catch (error) {
+        console.error('API call failed:', error);
+        throw error;
     }
-    
-    const url = `${azureConfig.endpoint}/openai/deployments/${azureConfig.deployment}/chat/completions?api-version=${azureConfig.apiVersion}`;
-    
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'api-key': azureConfig.apiKey
-        },
-        body: JSON.stringify({
-            messages: [
-                { role: 'user', content: prompt }
-            ],
-            max_tokens: maxTokens,
-            temperature: 0.7
-        })
-    });
-    
-    if (!response.ok) {
-        throw new Error(`API エラー: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
 }
 
 // モックレスポンス生成（デモ用）
 function generateMockResponse(prompt) {
     const mockResponses = {
         shareholder: [
-            "今期の売上高が前年比で減少していますが、来期の業績見通しはいかがでしょうか？",
-            "営業利益率の改善策について具体的な取り組みを教えてください。",
-            "新規事業への投資計画と期待される収益性についてお聞かせください。",
-            "競合他社との差別化戦略について詳しく説明していただけますか？",
+            "今期の売上高が前年比で減少していますが、**来期の業績見通し**はいかがでしょうか？",
+            "営業利益率の改善策について*具体的な取り組み*を教えてください。",
+            "新規事業への投資計画と期待される**収益性**についてお聞かせください。",
+            "競合他社との`差別化戦略`について詳しく説明していただけますか？",
             "株主還元政策の見直しについて検討されていることはありますか？"
         ],
         director: [
-            "ご質問ありがとうございます。来期については、新商品の投入と既存事業の効率化により、売上高の回復を見込んでおります。",
-            "営業利益率につきましては、DXの推進による業務効率化と原価削減により、段階的な改善を図ってまいります。",
-            "新規事業への投資は慎重に検討しており、ROI15%以上を目標として進めております。",
-            "当社の強みであるサービス品質と技術力を活かし、顧客満足度の向上に努めております。",
-            "株主の皆様への還元につきましては、業績向上と財務健全性のバランスを考慮して検討してまいります。"
+            "ご質問ありがとうございます。来期については、**新商品の投入**と既存事業の効率化により、売上高の回復を見込んでおります。",
+            "営業利益率につきましては、`DXの推進`による業務効率化と原価削減により、*段階的な改善*を図ってまいります。",
+            "新規事業への投資は慎重に検討しており、**ROI15%以上**を目標として進めております。",
+            "当社の強みである*サービス品質*と`技術力`を活かし、顧客満足度の向上に努めております。",
+            "株主の皆様への還元につきましては、**業績向上と財務健全性**のバランスを考慮して検討してまいります。"
         ],
         summary: [
-            "本日の対話では、業績向上への取り組み、新規事業への投資方針、競合戦略について活発な議論が行われました。取締役からは具体的な改善策と今後の方向性が示され、株主の懸念に対して誠実な回答がなされました。"
+            "本日の対話では、**業績向上への取り組み**、*新規事業への投資方針*、競合戦略について活発な議論が行われました。取締役からは具体的な改善策と今後の方向性が示され、株主の懸念に対して誠実な回答がなされました。"
         ]
     };
     
@@ -618,7 +719,7 @@ function addDialogMessage(type, content) {
     
     const bubbleDiv = document.createElement('div');
     bubbleDiv.className = `dialog-bubble ${type}`;
-    bubbleDiv.textContent = content;
+    bubbleDiv.innerHTML = renderMarkdown(content); // マークダウンをレンダリング
     
     // アイコンの設定
     switch (type) {
@@ -672,6 +773,19 @@ function updateUI() {
     } else {
         elements.startDialogBtn.title = '';
     }
+}
+
+// 簡単なマークダウンレンダラー
+function renderMarkdown(text) {
+    return text
+        // 太字
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // イタリック
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // インラインコード
+        .replace(/`(.*?)`/g, '<code class="bg-gray-200 px-1 rounded">$1</code>')
+        // 改行を保持
+        .replace(/\n/g, '<br>');
 }
 
 // ユーティリティ関数
